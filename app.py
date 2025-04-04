@@ -127,24 +127,7 @@ def login():
 
 @app.route('/logout')
 def logout():
-    if 'employee_id' in session:
-        employee = Employee.query.get(session['employee_id'])
-        if employee and employee.checked_in:
-            # Update ongoing shift
-            ongoing_shift = Shift.query.filter_by(
-                employee_id=employee.id,
-                check_out_time=None
-            ).first()
-            
-            if ongoing_shift:
-                ongoing_shift.check_out_time = datetime.now()
-            
-            employee.checked_in = False
-            employee.check_in_time = None
-            employee.shift_type = None
-            
-            db.session.commit()
-    
+    # Simply remove the employee from the session without affecting their check-in status
     session.pop('employee_id', None)
     return redirect(url_for('login'))
 
@@ -254,10 +237,21 @@ def view_shifts():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     
+    # If no dates specified, default to last week (Monday to Sunday)
+    if not start_date and not end_date:
+        today = datetime.now()
+        # Find the most recent Monday
+        days_since_monday = today.weekday()
+        last_monday = today - timedelta(days=days_since_monday)
+        last_sunday = last_monday + timedelta(days=6)
+        
+        start_date = last_monday.strftime('%Y-%m-%d')
+        end_date = last_sunday.strftime('%Y-%m-%d')
+    
     # Base query
     query = Shift.query
     
-    # Apply date filters if provided
+    # Apply date filters
     if start_date:
         start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
         query = query.filter(Shift.check_in_time >= start_datetime)
@@ -284,7 +278,7 @@ def view_shifts():
         day = shift.check_in_time.strftime('%A')
         shifts_by_day[day].append(shift)
     
-    return render_template('view_shifts.html', shifts_by_day=shifts_by_day)
+    return render_template('view_shifts.html', shifts_by_day=shifts_by_day, start_date=start_date, end_date=end_date)
 
 @app.route('/admin/shifts/export')
 @admin_required
@@ -315,27 +309,44 @@ def export_shifts():
     # Get filtered shifts
     shifts = query.order_by(Shift.check_in_time.desc()).all()
     
-    # Get unique employees
-    employees = list(set(shift.employee.name for shift in shifts))
+    # Debug logging
+    print("\nExport Shifts Debug Info:")
+    print(f"Date range: {start_date} to {end_date}")
+    print(f"Total shifts found: {len(shifts)}")
+    
+    # Get all employees from database, not just those with shifts
+    all_employees = Employee.query.filter_by(is_admin=False).all()
+    employees = [emp.name for emp in all_employees]
     employees.sort()  # Sort alphabetically
     
-    # Initialize data structures
+    print(f"Total employees in database: {len(employees)}")
+    print("Employee names:", employees)
+    
+    # Initialize data structures with all employees
     employee_data = {emp: {'day': [], 'evening': [], 'weekend': []} for emp in employees}
     total_hours = {emp: {'day': 0, 'evening': 0, 'weekend': 0} for emp in employees}
     
     # Process shifts
     for shift in shifts:
+        print(f"Processing shift for {shift.employee.name}")
         duration = None
         if shift.check_out_time:
             duration = (shift.check_out_time - shift.check_in_time).total_seconds() / 3600
             total_hours[shift.employee.name][shift.shift_type] += duration
+        
+        # Format duration as hours and minutes without decimals
+        duration_str = None
+        if duration:
+            hours = int(duration)
+            minutes = int((duration - hours) * 60)
+            duration_str = f"{hours}h {minutes}m"
         
         shift_data = {
             'Date': shift.check_in_time.strftime('%Y-%m-%d'),
             'Day': shift.check_in_time.strftime('%A'),
             'Check In': shift.check_in_time.strftime('%H:%M:%S'),
             'Check Out': shift.check_out_time.strftime('%H:%M:%S') if shift.check_out_time else 'Not checked out',
-            'Duration (hours)': f"{duration:.2f}" if duration else 'Ongoing'
+            'Duration': duration_str if duration else 'Ongoing'
         }
         employee_data[shift.employee.name][shift.shift_type].append(shift_data)
     
@@ -364,43 +375,85 @@ def export_shifts():
             'border': 1
         })
         
+        date_range_format = workbook.add_format({
+            'bold': True,
+            'font_size': 12,
+            'align': 'center',
+            'valign': 'vcenter'
+        })
+        
         # Create Summary Sheet
+        worksheet_summary = workbook.add_worksheet('Summary')
+        
+        # Add date range information at the top
+        worksheet_summary.merge_range('A1:E1', f'Shift Report for Period: {start_date} to {end_date}', date_range_format)
+        worksheet_summary.set_row(0, 30)  # Make the header row taller
+        
+        # Create Summary Sheet data
         summary_data = []
+        grand_totals = {'day': 0, 'evening': 0, 'weekend': 0}
+        
         for employee in employees:
             hours = total_hours[employee]
-            total = sum(hours.values())
+            # Update grand totals
+            grand_totals['day'] += hours['day']
+            grand_totals['evening'] += hours['evening']
+            grand_totals['weekend'] += hours['weekend']
+            
+            # Format hours as hours and minutes
+            day_hours = int(hours['day'])
+            day_minutes = int((hours['day'] - day_hours) * 60)
+            evening_hours = int(hours['evening'])
+            evening_minutes = int((hours['evening'] - evening_hours) * 60)
+            weekend_hours = int(hours['weekend'])
+            weekend_minutes = int((hours['weekend'] - weekend_hours) * 60)
+            
+            total_hours_sum = sum(hours.values())
+            total_hours_int = int(total_hours_sum)
+            total_minutes = int((total_hours_sum - total_hours_int) * 60)
+            
             summary_data.append({
                 'Employee': employee,
-                'Day Hours': f"{hours['day']:.2f}",
-                'Evening Hours': f"{hours['evening']:.2f}",
-                'Weekend Hours': f"{hours['weekend']:.2f}",
-                'Total Hours': f"{total:.2f}"
+                'Day Hours': f"{day_hours}h {day_minutes}m",
+                'Evening Hours': f"{evening_hours}h {evening_minutes}m",
+                'Weekend Hours': f"{weekend_hours}h {weekend_minutes}m",
+                'Total Hours': f"{total_hours_int}h {total_minutes}m"
             })
         
         # Add grand totals
-        grand_totals = {
+        grand_total_hours = sum(grand_totals.values())
+        grand_total_hours_int = int(grand_total_hours)
+        grand_total_minutes = int((grand_total_hours - grand_total_hours_int) * 60)
+        
+        grand_totals_row = {
             'Employee': 'GRAND TOTAL',
-            'Day Hours': f"{sum(total_hours[emp]['day'] for emp in employees):.2f}",
-            'Evening Hours': f"{sum(total_hours[emp]['evening'] for emp in employees):.2f}",
-            'Weekend Hours': f"{sum(total_hours[emp]['weekend'] for emp in employees):.2f}",
-            'Total Hours': f"{sum(sum(total_hours[emp].values()) for emp in employees):.2f}"
+            'Day Hours': f"{int(grand_totals['day'])}h {int((grand_totals['day'] - int(grand_totals['day'])) * 60)}m",
+            'Evening Hours': f"{int(grand_totals['evening'])}h {int((grand_totals['evening'] - int(grand_totals['evening'])) * 60)}m",
+            'Weekend Hours': f"{int(grand_totals['weekend'])}h {int((grand_totals['weekend'] - int(grand_totals['weekend'])) * 60)}m",
+            'Total Hours': f"{grand_total_hours_int}h {grand_total_minutes}m"
         }
-        summary_data.append(grand_totals)
+        summary_data.append(grand_totals_row)
         
         # Create and format summary sheet
         df_summary = pd.DataFrame(summary_data)
-        df_summary.to_excel(writer, sheet_name='Summary', index=False)
-        worksheet_summary = writer.sheets['Summary']
+        
+        # Write headers starting from row 2 (after date range)
+        for i, col in enumerate(df_summary.columns):
+            worksheet_summary.write(2, i, col, header_format)
+        
+        # Write data starting from row 3
+        for row_idx, row in enumerate(df_summary.itertuples(index=False), start=3):
+            for col_idx, value in enumerate(row):
+                worksheet_summary.write(row_idx, col_idx, value)
         
         # Format summary sheet
         for i, col in enumerate(df_summary.columns):
             max_length = max(df_summary[col].astype(str).apply(len).max(), len(col)) + 2
             worksheet_summary.set_column(i, i, max_length)
-            worksheet_summary.write(0, i, col, header_format)
         
         # Format grand total row
         for col in range(len(df_summary.columns)):
-            worksheet_summary.write(len(df_summary) - 1, col, df_summary.iloc[-1, col], total_format)
+            worksheet_summary.write(len(df_summary) + 2, col, df_summary.iloc[-1, col], total_format)
         
         # Create individual employee sheets
         for employee in employees:
@@ -409,13 +462,16 @@ def export_shifts():
             for shift_type in ['day', 'evening', 'weekend']:
                 if employee_data[employee][shift_type]:
                     df = pd.DataFrame(employee_data[employee][shift_type])
-                    # Add total row
+                    # Add total row with hours and minutes
+                    hours = total_hours[employee][shift_type]
+                    hours_int = int(hours)
+                    minutes = int((hours - hours_int) * 60)
                     total_row = {
                         'Date': 'Total Hours',
                         'Day': '',
                         'Check In': '',
                         'Check Out': '',
-                        'Duration (hours)': f"{total_hours[employee][shift_type]:.2f}"
+                        'Duration': f"{hours_int}h {minutes}m"
                     }
                     df = pd.concat([df, pd.DataFrame([total_row])], ignore_index=True)
                     dfs[shift_type] = df
@@ -424,12 +480,16 @@ def export_shifts():
             sheet_name = employee[:31]  # Excel sheet names limited to 31 chars
             worksheet = workbook.add_worksheet(sheet_name)
             
-            # Write headers
-            for col, header in enumerate(['Shift Type', 'Date', 'Day', 'Check In', 'Check Out', 'Duration (hours)']):
-                worksheet.write(0, col, header, header_format)
+            # Add date range information at the top of each employee sheet
+            worksheet.merge_range('A1:F1', f'Shift Report for Period: {start_date} to {end_date}', date_range_format)
+            worksheet.set_row(0, 30)  # Make the header row taller
             
-            # Write data for each shift type
-            current_row = 1
+            # Write headers starting from row 2
+            for col, header in enumerate(['Shift Type', 'Date', 'Day', 'Check In', 'Check Out', 'Duration']):
+                worksheet.write(2, col, header, header_format)
+            
+            # Write data for each shift type starting from row 3
+            current_row = 3
             for shift_type in ['day', 'evening', 'weekend']:
                 if shift_type in dfs:
                     df = dfs[shift_type]
@@ -455,7 +515,7 @@ def export_shifts():
     output.seek(0)
     
     # Create filename with date range
-    filename = f'shifts_{start_date}_to_{end_date}.xlsx' if start_date and end_date else f'shifts_{datetime.now().strftime("%Y-%m")}.xlsx'
+    filename = f'shifts_{start_date}_to_{end_date}.xlsx'
     
     return send_file(
         output,

@@ -308,14 +308,14 @@
             <form id="dateFilterForm" method="GET" action="{{ url_for('view_shifts') }}">
                 <div class="date-range">
                     <div class="form-group">
-                        <label for="start_date">Start Date</label>
+                        <label for="start_date">Start Date (Monday)</label>
                         <input type="text" class="form-control datepicker" id="start_date" name="start_date" 
-                               value="{{ request.args.get('start_date', '') }}" placeholder="Select start date">
+                               value="{{ start_date }}" placeholder="Select start date">
                     </div>
                     <div class="form-group">
-                        <label for="end_date">End Date</label>
+                        <label for="end_date">End Date (Sunday)</label>
                         <input type="text" class="form-control datepicker" id="end_date" name="end_date" 
-                               value="{{ request.args.get('end_date', '') }}" placeholder="Select end date">
+                               value="{{ end_date }}" placeholder="Select end date">
                     </div>
                 </div>
                 <div class="filter-actions">
@@ -328,6 +328,10 @@
                         Clear Filter
                     </a>
                 </div>
+                <small class="text-muted mt-2 d-block">
+                    <i class="fas fa-info-circle"></i>
+                    By default, shifts from the last week (Monday to Sunday) are displayed.
+                </small>
             </form>
         </div>
 
@@ -449,11 +453,23 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
-        // Initialize date pickers
+        // Initialize date pickers with constraints
         flatpickr(".datepicker", {
             dateFormat: "Y-m-d",
             allowInput: true,
-            maxDate: "today"
+            maxDate: "today",
+            onChange: function(selectedDates, dateStr, instance) {
+                // If start date is selected, ensure end date is not before it
+                if (instance.element.id === 'start_date' && selectedDates[0]) {
+                    const endDatePicker = document.getElementById('end_date')._flatpickr;
+                    endDatePicker.set('minDate', selectedDates[0]);
+                }
+                // If end date is selected, ensure start date is not after it
+                if (instance.element.id === 'end_date' && selectedDates[0]) {
+                    const startDatePicker = document.getElementById('start_date')._flatpickr;
+                    startDatePicker.set('maxDate', selectedDates[0]);
+                }
+            }
         });
 
         // Handle form submission
@@ -464,6 +480,19 @@
             
             if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
                 alert('End date must be after start date');
+                return;
+            }
+            
+            // Ensure dates are Monday to Sunday
+            const startDay = new Date(startDate).getDay();
+            const endDay = new Date(endDate).getDay();
+            
+            if (startDay !== 1) { // 1 is Monday
+                alert('Start date must be a Monday');
+                return;
+            }
+            if (endDay !== 0) { // 0 is Sunday
+                alert('End date must be a Sunday');
                 return;
             }
             
