@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizzeria Time Tracking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #34495E;
+            --accent-color: #3498DB;
+            --success-color: #27AE60;
+            --warning-color: #F1C40F;
+            --danger-color: #E74C3C;
+            --light-bg: #F8F9FA;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: white !important;
+            font-size: 1.4rem;
+        }
+
+        .page-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 2rem;
+        }
+
+        .employee-card {
+            background: white;
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            margin-bottom: 1.5rem;
+            height: 100%;
+        }
+
+        .employee-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .employee-card .card-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .employee-name {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .status-badge {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .btn {
+            font-weight: 500;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn i {
+            font-size: 1.1rem;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .btn-info {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            color: white;
+        }
+
+        .btn-warning {
+            background-color: var(--warning-color);
+            border-color: var(--warning-color);
+            color: var(--primary-color);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+
+        .checked-in {
+            background-color: rgba(39, 174, 96, 0.1);
+        }
+
+        .shift-btn {
+            min-width: 120px;
+        }
+
+        .time-display {
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+            margin: 0.5rem 0 1rem 0;
+            font-weight: 500;
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .status-indicator {
+            margin-right: 0.5rem;
+        }
+
+        .button-container {
+            margin-top: auto;
+        }
+
+        @media (max-width: 768px) {
+            .employee-card {
+                margin-bottom: 1rem;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+                margin: 1.5rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-clock me-2"></i>
+                Pizzeria Time Tracking
+            </a>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h1 class="page-title">Employee Time Tracking</h1>
+        
+        <div class="row" id="employee-grid">
+            {% for employee in employees %}
+            <div class="col-md-4">
+                <div class="card employee-card" id="employee-{{ employee.id }}">
+                    <div class="card-body">
+                        <h5 class="employee-name">{{ employee.name }}</h5>
+                        <div class="status-container">
+                            <div class="status-indicator">
+                                <span class="badge bg-secondary status-badge">Not Checked In</span>
+                            </div>
+                        </div>
+                        <div class="time-display"></div>
+                        <div class="button-container">
+                            <button class="btn btn-primary shift-btn check-in-btn" 
+                                    data-employee-id="{{ employee.id }}"
+                                    data-shift-type="day">
+                                <i class="fas fa-sun"></i>
+                                <span>Day Shift</span>
+                            </button>
+                            <button class="btn btn-info shift-btn check-in-btn" 
+                                    data-employee-id="{{ employee.id }}"
+                                    data-shift-type="evening">
+                                <i class="fas fa-moon"></i>
+                                <span>Evening Shift</span>
+                            </button>
+                            <button class="btn btn-warning shift-btn check-in-btn" 
+                                    data-employee-id="{{ employee.id }}"
+                                    data-shift-type="weekend">
+                                <i class="fas fa-calendar-weekend"></i>
+                                <span>Weekend Shift</span>
+                            </button>
+                            <button class="btn btn-danger check-out-btn" 
+                                    data-employee-id="{{ employee.id }}"
+                                    style="display: none;">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Check Out</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function formatTime(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+            });
+        }
+
+        function updateStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(employee => {
+                        const card = document.querySelector(`#employee-${employee.id}`);
+                        const statusBadge = card.querySelector('.status-indicator .badge');
+                        const checkInBtns = card.querySelectorAll('.check-in-btn');
+                        const checkOutBtn = card.querySelector('.check-out-btn');
+                        const timeDisplay = card.querySelector('.time-display');
+
+                        if (employee.checked_in) {
+                            card.classList.add('checked-in');
+                            statusBadge.className = 'badge bg-success status-badge';
+                            statusBadge.textContent = `Checked In (${employee.shift_type})`;
+                            timeDisplay.textContent = `Since: ${formatTime(employee.check_in_time)}`;
+                            checkInBtns.forEach(btn => btn.style.display = 'none');
+                            checkOutBtn.style.display = 'flex';
+                        } else {
+                            card.classList.remove('checked-in');
+                            statusBadge.className = 'badge bg-secondary status-badge';
+                            statusBadge.textContent = 'Not Checked In';
+                            timeDisplay.textContent = '';
+                            checkInBtns.forEach(btn => btn.style.display = 'flex');
+                            checkOutBtn.style.display = 'none';
+                        }
+                    });
+                });
+        }
+
+        document.querySelectorAll('.check-in-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const employeeId = this.dataset.employeeId;
+                const shiftType = this.dataset.shiftType;
+                
+                fetch(`/check_in/${employeeId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `shift_type=${shiftType}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateStatus();
+                    } else {
+                        alert(data.error);
+                    }
+                });
+            });
+        });
+
+        document.querySelectorAll('.check-out-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const employeeId = this.dataset.employeeId;
+                
+                fetch(`/check_out/${employeeId}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateStatus();
+                    } else {
+                        alert(data.error);
+                    }
+                });
+            });
+        });
+
+        // Update status every 30 seconds
+        setInterval(updateStatus, 30000);
+        // Initial status update
+        updateStatus();
+    </script>
+</body>
+</html> 

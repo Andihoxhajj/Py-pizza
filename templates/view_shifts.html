@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shift History - Pizzeria Time Tracking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #34495E;
+            --accent-color: #3498DB;
+            --success-color: #27AE60;
+            --warning-color: #F1C40F;
+            --danger-color: #E74C3C;
+            --light-bg: #F8F9FA;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--light-bg);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: white !important;
+            font-size: 1.4rem;
+        }
+
+        .page-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 2rem;
+        }
+
+        .card {
+            background: white;
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn {
+            font-weight: 500;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn i {
+            font-size: 1.1rem;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .shifts-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .shifts-table th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 500;
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .shifts-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .shifts-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .shifts-table tr:hover {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        .shift-type {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .shift-type.day {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--accent-color);
+        }
+
+        .shift-type.evening {
+            background-color: rgba(155, 89, 182, 0.1);
+            color: #9B59B6;
+        }
+
+        .shift-type.weekend {
+            background-color: rgba(241, 196, 15, 0.1);
+            color: var(--warning-color);
+        }
+
+        .export-btn {
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 1.5rem;
+                margin: 1.5rem 0;
+            }
+
+            .admin-actions {
+                flex-direction: column;
+            }
+
+            .shifts-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-clock me-2"></i>
+                Pizzeria Time Tracking
+            </a>
+            <div class="admin-actions">
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-link">
+                    <i class="fas fa-chart-line"></i>
+                    Dashboard
+                </a>
+                <a href="{{ url_for('logout') }}" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h1 class="page-title">Shift History</h1>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-primary" onclick="showWeekendHours()">
+                <i class="fas fa-calendar-weekend"></i>
+                Weekend Hours
+            </button>
+            <a href="{{ url_for('export_shifts') }}" class="btn btn-primary">
+                <i class="fas fa-file-excel"></i>
+                Export to Excel
+            </a>
+        </div>
+
+        <!-- Weekend Hours Modal -->
+        <div class="modal fade" id="weekendHoursModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Weekend Hours Summary</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-4">
+                            <h4>Total Weekend Hours</h4>
+                            <h2 class="text-primary" id="totalWeekendHours">0</h2>
+                            <a href="{{ url_for('export_weekend_hours') }}" class="btn btn-primary mt-3">
+                                <i class="fas fa-file-excel"></i>
+                                Export to Excel
+                            </a>
+                        </div>
+                        <h5 class="mb-3">Hours by Employee</h5>
+                        <div id="employeeWeekendHours"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    {% for day, shifts in shifts_by_day.items() %}
+                    <h4 class="mb-3">{{ day }}</h4>
+                    <table class="shifts-table mb-4">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Shift Type</th>
+                                <th>Check In</th>
+                                <th>Check Out</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if shifts %}
+                                {% for shift in shifts %}
+                                <tr>
+                                    <td>{{ shift.employee.name }}</td>
+                                    <td>
+                                        <span class="shift-type {{ shift.shift_type }}">
+                                            {{ shift.shift_type|title }}
+                                        </span>
+                                    </td>
+                                    <td>{{ shift.check_in_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>
+                                        {% if shift.check_out_time %}
+                                            {{ shift.check_out_time.strftime('%Y-%m-%d %H:%M:%S') }}
+                                        {% else %}
+                                            <span class="text-warning">Not checked out</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if shift.check_out_time %}
+                                            {{ (shift.check_out_time - shift.check_in_time).total_seconds()|int // 3600 }}h 
+                                            {{ ((shift.check_out_time - shift.check_in_time).total_seconds()|int % 3600) // 60 }}m
+                                        {% else %}
+                                            <span class="text-warning">Ongoing</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No shifts recorded for this day</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showWeekendHours() {
+            fetch('/admin/shifts/weekend-hours')
+                .then(response => response.json())
+                .then(data => {
+                    // Update total hours
+                    document.getElementById('totalWeekendHours').textContent = data.total_hours + ' hours';
+                    
+                    // Update employee hours
+                    const employeeHoursDiv = document.getElementById('employeeWeekendHours');
+                    employeeHoursDiv.innerHTML = '';
+                    
+                    for (const [employee, hours] of Object.entries(data.employees)) {
+                        const employeeDiv = document.createElement('div');
+                        employeeDiv.className = 'd-flex justify-content-between align-items-center mb-2';
+                        employeeDiv.innerHTML = `
+                            <span>${employee}</span>
+                            <span class="badge bg-primary">${hours} hours</span>
+                        `;
+                        employeeHoursDiv.appendChild(employeeDiv);
+                    }
+                    
+                    // Show modal
+                    new bootstrap.Modal(document.getElementById('weekendHoursModal')).show();
+                })
+                .catch(error => {
+                    console.error('Error fetching weekend hours:', error);
+                    alert('Error fetching weekend hours. Please try again.');
+                });
+        }
+    </script>
+</body>
+</html> 

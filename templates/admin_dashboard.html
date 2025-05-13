@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Pizzeria Time Tracking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #34495E;
+            --accent-color: #3498DB;
+            --success-color: #27AE60;
+            --warning-color: #F1C40F;
+            --danger-color: #E74C3C;
+            --light-bg: #F8F9FA;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--light-bg);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: white !important;
+            font-size: 1.4rem;
+        }
+
+        .page-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 2rem;
+        }
+
+        .card {
+            background: white;
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn {
+            font-weight: 500;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn i {
+            font-size: 1.1rem;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .employee-card {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .employee-card:last-child {
+            border-bottom: none;
+        }
+
+        .employee-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .employee-status {
+            font-size: 1rem;
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .status-badge.checked-in {
+            background-color: rgba(39, 174, 96, 0.1);
+            color: var(--success-color);
+        }
+
+        .status-badge.checked-out {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--danger-color);
+        }
+
+        .shift-type {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-left: 0.5rem;
+        }
+
+        .shift-type.day {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--accent-color);
+        }
+
+        .shift-type.evening {
+            background-color: rgba(155, 89, 182, 0.1);
+            color: #9B59B6;
+        }
+
+        .shift-type.weekend {
+            background-color: rgba(241, 196, 15, 0.1);
+            color: var(--warning-color);
+        }
+
+        .employee-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .no-employees {
+            text-align: center;
+            padding: 2rem;
+            color: var(--secondary-color);
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 1.5rem;
+                margin: 1.5rem 0;
+            }
+
+            .admin-actions {
+                flex-direction: column;
+            }
+
+            .employee-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-clock me-2"></i>
+                Pizzeria Time Tracking
+            </a>
+            <div class="admin-actions">
+                <a href="{{ url_for('view_shifts') }}" class="nav-link">
+                    <i class="fas fa-history"></i>
+                    Shift History
+                </a>
+                <a href="{{ url_for('manage_employees') }}" class="nav-link">
+                    <i class="fas fa-users"></i>
+                    Manage Employees
+                </a>
+                <a href="{{ url_for('logout') }}" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h1 class="page-title">Currently Working</h1>
+
+        <div class="card">
+            <div class="card-body">
+                {% if checked_in_employees %}
+                    {% for employee in checked_in_employees %}
+                    <div class="employee-card">
+                        <div class="employee-name">
+                            {{ employee.name }}
+                            <span class="shift-type {{ employee.shift_type }}">
+                                {{ employee.shift_type|title }}
+                            </span>
+                        </div>
+                        <div class="employee-status">
+                            <span class="status-badge checked-in">
+                                <i class="fas fa-check-circle me-1"></i>
+                                Checked In
+                            </span>
+                            <span class="ms-3">
+                                Since: {{ employee.check_in_time.strftime('%H:%M:%S') }}
+                            </span>
+                        </div>
+                        <div class="employee-actions">
+                            <button class="btn btn-danger check-out-btn" data-employee-id="{{ employee.id }}">
+                                <i class="fas fa-sign-out-alt"></i>
+                                Check Out
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-employees">
+                        <i class="fas fa-users fa-3x mb-3"></i>
+                        <h3>No employees currently working</h3>
+                        <p class="text-muted">Employees will appear here when they check in</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelectorAll('.check-out-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const employeeId = this.dataset.employeeId;
+                fetch(`/check-out/${employeeId}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            });
+        });
+
+        // Update status every 30 seconds
+        setInterval(() => {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    const checkedInEmployees = data.filter(emp => emp.checked_in);
+                    if (checkedInEmployees.length === 0) {
+                        location.reload();
+                    }
+                });
+        }, 30000);
+    </script>
+</body>
+</html> 
