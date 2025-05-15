@@ -519,73 +519,8 @@ def init_db():
             is_admin=True
         )
         db.session.add(admin)
-        
-        # Create sample employees
-        sample_employees = [
-            {'name': 'John Smith', 'pin': '1111'},
-            {'name': 'Emma Johnson', 'pin': '2222'},
-            {'name': 'Michael Brown', 'pin': '3333'},
-            {'name': 'Sarah Davis', 'pin': '4444'}
-        ]
-        
-        for emp_data in sample_employees:
-            employee = Employee(
-                name=emp_data['name'],
-                pin=generate_password_hash(emp_data['pin']),
-                is_admin=False
-            )
-            db.session.add(employee)
-        
-        db.session.commit()
-        
-        # Create sample weekend shifts
-        employees = Employee.query.filter_by(is_admin=False).all()
-        
-        # Get last weekend's dates
-        today = datetime.now()
-        last_saturday = today - timedelta(days=(today.weekday() + 2) % 7)
-        last_sunday = last_saturday + timedelta(days=1)
-        
-        # Create shifts for each employee
-        for employee in employees:
-            # Saturday morning shift
-            sat_morning = Shift(
-                employee_id=employee.id,
-                check_in_time=datetime.combine(last_saturday.date(), time(10, 0)),
-                check_out_time=datetime.combine(last_saturday.date(), time(16, 0)),
-                shift_type='weekend'
-            )
-            db.session.add(sat_morning)
-            
-            # Saturday evening shift
-            sat_evening = Shift(
-                employee_id=employee.id,
-                check_in_time=datetime.combine(last_saturday.date(), time(16, 0)),
-                check_out_time=datetime.combine(last_saturday.date(), time(22, 0)),
-                shift_type='weekend'
-            )
-            db.session.add(sat_evening)
-            
-            # Sunday morning shift
-            sun_morning = Shift(
-                employee_id=employee.id,
-                check_in_time=datetime.combine(last_sunday.date(), time(10, 0)),
-                check_out_time=datetime.combine(last_sunday.date(), time(16, 0)),
-                shift_type='weekend'
-            )
-            db.session.add(sun_morning)
-            
-            # Sunday evening shift
-            sun_evening = Shift(
-                employee_id=employee.id,
-                check_in_time=datetime.combine(last_sunday.date(), time(16, 0)),
-                check_out_time=datetime.combine(last_sunday.date(), time(22, 0)),
-                shift_type='weekend'
-            )
-            db.session.add(sun_evening)
-        
         db.session.commit()
 
 if __name__ == '__main__':
-    init_db()  # Initialize database with admin user and sample data
+    init_db()  # Initialize database with admin user
     app.run(debug=True) 
