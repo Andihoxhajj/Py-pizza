@@ -176,10 +176,11 @@ def add_employee():
     if len(pin) != 4 or not pin.isdigit():
         return jsonify({'success': False, 'message': 'PIN must be 4 digits'})
     
-    # Check if PIN already exists
-    existing_employee = Employee.query.filter_by(pin=generate_password_hash(pin)).first()
-    if existing_employee:
-        return jsonify({'success': False, 'message': 'PIN already in use'})
+    # Check if PIN already exists (fix: check using check_password_hash)
+    employees = Employee.query.all()
+    for employee in employees:
+        if check_password_hash(employee.pin, pin):
+            return jsonify({'success': False, 'message': 'PIN already in use'})
     
     employee = Employee(
         name=name,

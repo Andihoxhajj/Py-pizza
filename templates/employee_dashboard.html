@@ -9,9 +9,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            --primary-color: #2C3E50;
-            --secondary-color: #34495E;
-            --accent-color: #3498DB;
+            --primary-color: #C0392B; /* Red */
+            --secondary-color: #922B21;
+            --accent-color: #C0392B;  /* Red */
             --success-color: #27AE60;
             --warning-color: #F1C40F;
             --danger-color: #E74C3C;
@@ -74,19 +74,34 @@
             font-size: 1.1rem;
         }
 
-        .btn-primary {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
+        .btn-primary, .bg-primary {
+            background-color: var(--accent-color) !important;
+            border-color: var(--accent-color) !important;
         }
-
         .btn-success {
-            background-color: var(--success-color);
-            border-color: var(--success-color);
+            background-color: var(--success-color) !important;
+            border-color: var(--success-color) !important;
         }
-
         .btn-danger {
-            background-color: var(--danger-color);
-            border-color: var(--danger-color);
+            background-color: var(--danger-color) !important;
+            border-color: var(--danger-color) !important;
+        }
+        .pizza-btn {
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 60% 40%, #FFD700 60%, #C0392B 100%);
+            border: 3px solid #C0392B;
+            box-shadow: 0 2px 8px rgba(192,57,43,0.15);
+            font-size: 2rem;
+            transition: transform 0.2s;
+        }
+        .pizza-btn:hover {
+            transform: scale(1.08) rotate(-10deg);
+            box-shadow: 0 4px 16px rgba(192,57,43,0.25);
         }
 
         .nav-link {
@@ -233,7 +248,7 @@
     </nav>
 
     <div class="container py-4">
-        <div class="employee-info">
+        <div class="employee-info" data-employee-id="{{ employee.id }}">
             <h1 class="employee-name">{{ employee.name }}</h1>
             <div class="employee-status">
                 {% if employee.checked_in %}
@@ -252,14 +267,12 @@
 
         <div class="shift-buttons">
             {% if not employee.checked_in %}
-                <button class="btn btn-success check-in-btn">
-                    <i class="fas fa-sign-in-alt"></i>
-                    Check In
+                <button class="pizza-btn check-in-btn" title="Check In">
+                    <span style="font-size:1.3em;">🍕</span>
                 </button>
             {% else %}
-                <button class="btn btn-danger check-out-btn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Check Out
+                <button class="pizza-btn check-out-btn" title="Check Out">
+                    <span style="font-size:1.3em;">🍕</span>
                 </button>
             {% endif %}
         </div>
@@ -320,7 +333,8 @@
             fetch('/status')
                 .then(response => response.json())
                 .then(data => {
-                    const employee = data.find(emp => emp.id === {{ employee.id }});
+                    const employeeId = document.querySelector('.employee-info').getAttribute('data-employee-id');
+                    const employee = data.find(emp => emp.id === parseInt(employeeId));
                     if (employee) {
                         const statusBadge = document.querySelector('.status-badge');
                         if (employee.checked_in) {
