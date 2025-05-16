@@ -41,18 +41,18 @@
             font-size: 1.4rem;
         }
 
+        .main-content {
+            padding: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
         .page-title {
             color: var(--primary-color);
             font-weight: 600;
             margin: 1rem 0;
             text-align: center;
             font-size: 1.8rem;
-        }
-
-        .container {
-            padding: 0;
-            max-width: 1200px;
-            margin: 0 auto;
         }
 
         .card {
@@ -64,7 +64,7 @@
         }
 
         .card-body {
-            padding: 0.8rem;
+            padding: 1rem;
         }
 
         .btn {
@@ -201,9 +201,13 @@
         }
 
         @media (max-width: 768px) {
+            .main-content {
+                padding: 0.5rem;
+            }
+            
             .page-title {
                 font-size: 1.5rem;
-                margin: 1.5rem 0;
+                margin: 1rem 0;
             }
 
             .admin-actions {
@@ -219,7 +223,7 @@
         .date-filter {
             background: white;
             border-radius: 8px;
-            padding: 0.8rem;
+            padding: 1rem;
             margin-bottom: 1rem;
             box-shadow: var(--card-shadow);
         }
@@ -262,7 +266,7 @@
             display: flex;
             gap: 0.8rem;
             justify-content: flex-end;
-            margin-bottom: 0.8rem;
+            margin-bottom: 1rem;
         }
 
         .action-buttons .btn {
@@ -298,7 +302,7 @@
         </div>
     </nav>
 
-    <div class="container">
+    <div class="main-content">
         <h1 class="page-title">Shift History</h1>
 
         <div class="date-filter">
