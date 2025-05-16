@@ -134,6 +134,24 @@ def login():
 
 @app.route('/logout')
 def logout():
+    if 'employee_id' in session:
+        employee = Employee.query.get(session['employee_id'])
+        if employee and employee.checked_in:
+            # Update ongoing shift
+            ongoing_shift = Shift.query.filter_by(
+                employee_id=employee.id,
+                check_out_time=None
+            ).first()
+            
+            if ongoing_shift:
+                ongoing_shift.check_out_time = datetime.utcnow()
+            
+            employee.checked_in = False
+            employee.check_in_time = None
+            employee.shift_type = None
+            
+            db.session.commit()
+    
     session.pop('employee_id', None)
     return redirect(url_for('login'))
 
@@ -545,4 +563,4 @@ def export_weekend_hours():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Only create tables if they don't exist
-    app.run(debug=True) 
+    app.run(debug=True, port=5001) 
