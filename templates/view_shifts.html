@@ -24,12 +24,15 @@
             font-family: 'Inter', sans-serif;
             background-color: var(--light-bg);
             min-height: 100vh;
+            padding: 0;
+            margin: 0;
         }
 
         .navbar {
             background-color: var(--primary-color);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 1rem 0;
+            padding: 0.8rem 0;
+            margin-bottom: 1rem;
         }
 
         .navbar-brand {
@@ -41,13 +44,13 @@
         .page-title {
             color: var(--primary-color);
             font-weight: 600;
-            margin: 1.5rem 0;
+            margin: 1rem 0;
             text-align: center;
             font-size: 1.8rem;
         }
 
         .container {
-            padding: 1rem;
+            padding: 0;
             max-width: 1200px;
             margin: 0 auto;
         }
@@ -57,11 +60,11 @@
             border: none;
             border-radius: 8px;
             box-shadow: var(--card-shadow);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .card-body {
-            padding: 1rem;
+            padding: 0.8rem;
         }
 
         .btn {
@@ -114,6 +117,7 @@
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.9rem;
+            margin-bottom: 0.5rem;
         }
 
         .shifts-table th {
@@ -142,7 +146,7 @@
             color: var(--primary-color);
             font-weight: 600;
             font-size: 1.1rem;
-            margin: 1rem 0 0.5rem 0;
+            margin: 0.8rem 0 0.3rem 0;
             padding-bottom: 0.3rem;
             border-bottom: 2px solid var(--primary-color);
         }
@@ -215,8 +219,8 @@
         .date-filter {
             background: white;
             border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
+            padding: 0.8rem;
+            margin-bottom: 1rem;
             box-shadow: var(--card-shadow);
         }
 
@@ -224,7 +228,7 @@
             display: flex;
             gap: 0.8rem;
             align-items: center;
-            margin-bottom: 0.8rem;
+            margin-bottom: 0.5rem;
         }
 
         .date-range .form-group {
@@ -258,7 +262,7 @@
             display: flex;
             gap: 0.8rem;
             justify-content: flex-end;
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
         }
 
         .action-buttons .btn {
@@ -294,7 +298,7 @@
         </div>
     </nav>
 
-    <div class="container py-4">
+    <div class="container">
         <h1 class="page-title">Shift History</h1>
 
         <div class="date-filter">
