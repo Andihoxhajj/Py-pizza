@@ -23,6 +23,8 @@
             font-family: 'Inter', sans-serif;
             background-color: var(--light-bg);
             min-height: 100vh;
+            padding: 0;
+            margin: 0;
         }
 
         .navbar {
@@ -47,22 +49,24 @@
 
         .container {
             padding: 2rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .employee-info {
             text-align: center;
             margin-bottom: 2rem;
-            padding: 1rem;
+            padding: 2rem;
             background: white;
             border-radius: 12px;
             box-shadow: var(--card-shadow);
         }
 
         .employee-name {
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 600;
             color: var(--primary-color);
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
         }
 
         .employee-status {
@@ -91,13 +95,28 @@
             display: flex;
             gap: 1rem;
             justify-content: center;
-            margin: 1.5rem 0;
+            margin: 2rem 0;
+        }
+
+        .card {
+            background: white;
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+            padding: 2rem;
+        }
+
+        .card-body {
+            padding: 0;
         }
 
         .shifts-table {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
+            margin-top: 1rem;
         }
 
         .shifts-table th {
