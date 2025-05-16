@@ -508,20 +508,7 @@ def export_weekend_hours():
         download_name=f'weekend_hours_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     )
 
-def init_db():
-    with app.app_context():
-        db.drop_all()  # Drop all tables
-        db.create_all()  # Create new tables
-        
-        # Create admin user
-        admin = Employee(
-            name='Admin',
-            pin=generate_password_hash('1234'),  # Default admin PIN
-            is_admin=True
-        )
-        db.session.add(admin)
-        db.session.commit()
-
 if __name__ == '__main__':
-    init_db()  # Initialize database with admin user
+    with app.app_context():
+        db.create_all()  # Only create tables if they don't exist
     app.run(debug=True) 
