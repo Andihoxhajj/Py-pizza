@@ -210,7 +210,24 @@ def delete_employee(employee_id):
 @app.route('/admin/shifts')
 @admin_required
 def view_shifts():
-    shifts = Shift.query.order_by(Shift.check_in_time.desc()).all()
+    # Get date filter parameters
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Base query
+    query = Shift.query
+    
+    # Apply date filters if provided
+    if start_date:
+        start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+        query = query.filter(Shift.check_in_time >= start_datetime)
+    
+    if end_date:
+        end_datetime = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+        query = query.filter(Shift.check_in_time < end_datetime)
+    
+    # Get filtered shifts
+    shifts = query.order_by(Shift.check_in_time.desc()).all()
     
     # Group shifts by day of week
     shifts_by_day = {
@@ -232,7 +249,24 @@ def view_shifts():
 @app.route('/admin/shifts/export')
 @admin_required
 def export_shifts():
-    shifts = Shift.query.order_by(Shift.check_in_time.desc()).all()
+    # Get date filter parameters
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Base query
+    query = Shift.query
+    
+    # Apply date filters if provided
+    if start_date:
+        start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+        query = query.filter(Shift.check_in_time >= start_datetime)
+    
+    if end_date:
+        end_datetime = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+        query = query.filter(Shift.check_in_time < end_datetime)
+    
+    # Get filtered shifts
+    shifts = query.order_by(Shift.check_in_time.desc()).all()
     
     # Create DataFrame
     data = []
