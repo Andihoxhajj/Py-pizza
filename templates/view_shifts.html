@@ -340,6 +340,10 @@
                 <i class="fas fa-file-excel"></i>
                 Export to Excel
             </button>
+            <button class="btn btn-danger" onclick="deleteShifts()">
+                <i class="fas fa-trash-alt"></i>
+                Delete Shifts
+            </button>
         </div>
 
         <!-- Weekend Hours Modal -->
@@ -361,6 +365,26 @@
                         </div>
                         <h5 class="mb-3">Hours by Employee</h5>
                         <div id="employeeWeekendHours"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div class="modal fade" id="deleteConfirmationModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Deletion</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete all shifts between <span id="deleteStartDate"></span> and <span id="deleteEndDate"></span>?</p>
+                        <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> This action cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete Shifts</button>
                     </div>
                 </div>
             </div>
@@ -491,6 +515,59 @@
                     console.error('Error fetching weekend hours:', error);
                     alert('Error fetching weekend hours. Please try again.');
                 });
+        }
+
+        function deleteShifts() {
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates before deleting shifts.');
+                return;
+            }
+
+            // Format dates for display
+            const startDateDisplay = new Date(startDate).toLocaleDateString();
+            const endDateDisplay = new Date(endDate).toLocaleDateString();
+            
+            // Update modal content
+            document.getElementById('deleteStartDate').textContent = startDateDisplay;
+            document.getElementById('deleteEndDate').textContent = endDateDisplay;
+            
+            // Show confirmation modal
+            new bootstrap.Modal(document.getElementById('deleteConfirmationModal')).show();
+        }
+
+        function confirmDelete() {
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            
+            // Send delete request
+            fetch('/admin/shifts/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    start_date: startDate,
+                    end_date: endDate
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Close the modal
+                    bootstrap.Modal.getInstance(document.getElementById('deleteConfirmationModal')).hide();
+                    // Reload the page to show updated data
+                    window.location.reload();
+                } else {
+                    alert('Error deleting shifts: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting shifts. Please try again.');
+            });
         }
     </script>
 </body>

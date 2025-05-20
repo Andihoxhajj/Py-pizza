@@ -27,7 +27,7 @@ class Employee(db.Model):
 class Shift(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey('employee.id'), nullable=False)
-    check_in_time = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    check_in_time = db.Column(db.DateTime, nullable=False, default=datetime.now)
     check_out_time = db.Column(db.DateTime)
     shift_type = db.Column(db.String(20), nullable=False)
 
@@ -137,7 +137,7 @@ def logout():
             ).first()
             
             if ongoing_shift:
-                ongoing_shift.check_out_time = datetime.utcnow()
+                ongoing_shift.check_out_time = datetime.now()
             
             employee.checked_in = False
             employee.check_in_time = None
@@ -214,16 +214,38 @@ def add_employee():
 @app.route('/admin/employees/<int:employee_id>/delete', methods=['POST'])
 @admin_required
 def delete_employee(employee_id):
-    employee = Employee.query.get_or_404(employee_id)
-    if employee.is_admin:
-        flash('Cannot delete admin user.', 'danger')
+    try:
+        employee = Employee.query.get_or_404(employee_id)
+        
+        if employee.is_admin:
+            flash('Cannot delete admin user.', 'danger')
+            return redirect(url_for('manage_employees'))
+        
+        # Check if employee is currently checked in
+        if employee.checked_in:
+            # Update ongoing shift
+            ongoing_shift = Shift.query.filter_by(
+                employee_id=employee.id,
+                check_out_time=None
+            ).first()
+            
+            if ongoing_shift:
+                ongoing_shift.check_out_time = datetime.now()
+        
+        # Delete all associated shifts first
+        Shift.query.filter_by(employee_id=employee.id).delete()
+        
+        # Now delete the employee
+        db.session.delete(employee)
+        db.session.commit()
+        
+        flash('Employee deleted successfully!', 'success')
         return redirect(url_for('manage_employees'))
-    
-    db.session.delete(employee)
-    db.session.commit()
-    
-    flash('Employee deleted successfully!', 'success')
-    return redirect(url_for('manage_employees'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting employee: {str(e)}', 'danger')
+        return redirect(url_for('manage_employees'))
 
 @app.route('/admin/shifts')
 @admin_required
@@ -293,33 +315,142 @@ def export_shifts():
     # Get filtered shifts
     shifts = query.order_by(Shift.check_in_time.desc()).all()
     
-    # Create DataFrame
-    data = []
+    # Get unique employees
+    employees = list(set(shift.employee.name for shift in shifts))
+    employees.sort()  # Sort alphabetically
+    
+    # Initialize data structures
+    employee_data = {emp: {'day': [], 'evening': [], 'weekend': []} for emp in employees}
+    total_hours = {emp: {'day': 0, 'evening': 0, 'weekend': 0} for emp in employees}
+    
+    # Process shifts
     for shift in shifts:
         duration = None
         if shift.check_out_time:
             duration = (shift.check_out_time - shift.check_in_time).total_seconds() / 3600
+            total_hours[shift.employee.name][shift.shift_type] += duration
         
-        data.append({
-            'Employee': shift.employee.name,
-            'Shift Type': shift.shift_type.title(),
-            'Check In': shift.check_in_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'Check Out': shift.check_out_time.strftime('%Y-%m-%d %H:%M:%S') if shift.check_out_time else 'Not checked out',
+        shift_data = {
+            'Date': shift.check_in_time.strftime('%Y-%m-%d'),
+            'Day': shift.check_in_time.strftime('%A'),
+            'Check In': shift.check_in_time.strftime('%H:%M:%S'),
+            'Check Out': shift.check_out_time.strftime('%H:%M:%S') if shift.check_out_time else 'Not checked out',
             'Duration (hours)': f"{duration:.2f}" if duration else 'Ongoing'
-        })
-    
-    df = pd.DataFrame(data)
+        }
+        employee_data[shift.employee.name][shift.shift_type].append(shift_data)
     
     # Create Excel file in memory
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, sheet_name='Shifts', index=False)
+        workbook = writer.book
         
-        # Auto-adjust columns width
-        worksheet = writer.sheets['Shifts']
-        for i, col in enumerate(df.columns):
-            max_length = max(df[col].astype(str).apply(len).max(), len(col)) + 2
-            worksheet.set_column(i, i, max_length)
+        # Create formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#2C3E50',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        summary_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#E8F0FE',
+            'border': 1
+        })
+        
+        total_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#FFD700',
+            'border': 1
+        })
+        
+        # Create Summary Sheet
+        summary_data = []
+        for employee in employees:
+            hours = total_hours[employee]
+            total = sum(hours.values())
+            summary_data.append({
+                'Employee': employee,
+                'Day Hours': f"{hours['day']:.2f}",
+                'Evening Hours': f"{hours['evening']:.2f}",
+                'Weekend Hours': f"{hours['weekend']:.2f}",
+                'Total Hours': f"{total:.2f}"
+            })
+        
+        # Add grand totals
+        grand_totals = {
+            'Employee': 'GRAND TOTAL',
+            'Day Hours': f"{sum(total_hours[emp]['day'] for emp in employees):.2f}",
+            'Evening Hours': f"{sum(total_hours[emp]['evening'] for emp in employees):.2f}",
+            'Weekend Hours': f"{sum(total_hours[emp]['weekend'] for emp in employees):.2f}",
+            'Total Hours': f"{sum(sum(total_hours[emp].values()) for emp in employees):.2f}"
+        }
+        summary_data.append(grand_totals)
+        
+        # Create and format summary sheet
+        df_summary = pd.DataFrame(summary_data)
+        df_summary.to_excel(writer, sheet_name='Summary', index=False)
+        worksheet_summary = writer.sheets['Summary']
+        
+        # Format summary sheet
+        for i, col in enumerate(df_summary.columns):
+            max_length = max(df_summary[col].astype(str).apply(len).max(), len(col)) + 2
+            worksheet_summary.set_column(i, i, max_length)
+            worksheet_summary.write(0, i, col, header_format)
+        
+        # Format grand total row
+        for col in range(len(df_summary.columns)):
+            worksheet_summary.write(len(df_summary) - 1, col, df_summary.iloc[-1, col], total_format)
+        
+        # Create individual employee sheets
+        for employee in employees:
+            # Create DataFrame for each shift type
+            dfs = {}
+            for shift_type in ['day', 'evening', 'weekend']:
+                if employee_data[employee][shift_type]:
+                    df = pd.DataFrame(employee_data[employee][shift_type])
+                    # Add total row
+                    total_row = {
+                        'Date': 'Total Hours',
+                        'Day': '',
+                        'Check In': '',
+                        'Check Out': '',
+                        'Duration (hours)': f"{total_hours[employee][shift_type]:.2f}"
+                    }
+                    df = pd.concat([df, pd.DataFrame([total_row])], ignore_index=True)
+                    dfs[shift_type] = df
+            
+            # Write to Excel
+            sheet_name = employee[:31]  # Excel sheet names limited to 31 chars
+            worksheet = workbook.add_worksheet(sheet_name)
+            
+            # Write headers
+            for col, header in enumerate(['Shift Type', 'Date', 'Day', 'Check In', 'Check Out', 'Duration (hours)']):
+                worksheet.write(0, col, header, header_format)
+            
+            # Write data for each shift type
+            current_row = 1
+            for shift_type in ['day', 'evening', 'weekend']:
+                if shift_type in dfs:
+                    df = dfs[shift_type]
+                    # Write shift type header
+                    worksheet.write(current_row, 0, shift_type.title(), summary_format)
+                    current_row += 1
+                    
+                    # Write shift data
+                    for _, row in df.iterrows():
+                        for col, value in enumerate(row):
+                            worksheet.write(current_row, col + 1, value)
+                        current_row += 1
+                    
+                    current_row += 1  # Add space between shift types
+            
+            # Set column widths
+            worksheet.set_column(0, 0, 15)  # Shift Type
+            worksheet.set_column(1, 1, 12)  # Date
+            worksheet.set_column(2, 2, 12)  # Day
+            worksheet.set_column(3, 4, 12)  # Check In/Out
+            worksheet.set_column(5, 5, 15)  # Duration
     
     output.seek(0)
     
@@ -347,7 +478,7 @@ def check_in():
             return jsonify({'success': False, 'message': message})
         
         shift_type = get_shift_type()
-        current_time = datetime.utcnow()
+        current_time = datetime.now()
         
         # Update employee status
         employee.checked_in = True
@@ -390,7 +521,7 @@ def check_out():
     ).first()
     
     if ongoing_shift:
-        ongoing_shift.check_out_time = datetime.utcnow()
+        ongoing_shift.check_out_time = datetime.now()
     
     employee.checked_in = False
     employee.check_in_time = None
@@ -415,7 +546,7 @@ def admin_check_out(employee_id):
     ).first()
     
     if ongoing_shift:
-        ongoing_shift.check_out_time = datetime.utcnow()
+        ongoing_shift.check_out_time = datetime.now()
     
     employee.checked_in = False
     employee.check_in_time = None
@@ -461,7 +592,7 @@ def weekend_hours():
                 duration = (shift.check_out_time - shift.check_in_time).total_seconds() / 3600
             else:
                 # For ongoing shifts, calculate until now
-                duration = (datetime.utcnow() - shift.check_in_time).total_seconds() / 3600
+                duration = (datetime.now() - shift.check_in_time).total_seconds() / 3600
             # Update total hours
             weekend_hours['total_hours'] += duration
             # Update employee hours
@@ -496,7 +627,7 @@ def export_weekend_hours():
             if shift.check_out_time:
                 duration = (shift.check_out_time - shift.check_in_time).total_seconds() / 3600
             else:
-                duration = (datetime.utcnow() - shift.check_in_time).total_seconds() / 3600
+                duration = (datetime.now() - shift.check_in_time).total_seconds() / 3600
             
             # Update total hours
             weekend_hours['total_hours'] += duration
@@ -586,53 +717,59 @@ def export_weekend_hours():
         download_name=f'weekend_hours_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     )
 
-if __name__ == '__main__':
-    with app.app_context():
-        # Drop all tables and recreate them
-        db.drop_all()
-        db.create_all()
+@app.route('/admin/shifts/delete', methods=['POST'])
+@admin_required
+def delete_shifts():
+    try:
+        data = request.get_json()
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
         
-        # Create admin user
-        admin = Employee(
-            name='Admin',
-            pin=generate_password_hash('1234'),
-            is_admin=True
-        )
-        db.session.add(admin)
+        if not start_date or not end_date:
+            return jsonify({
+                'success': False,
+                'message': 'Start date and end date are required'
+            }), 400
         
-        # Create workers
-        workers = [
-            {
-                'name': 'John Smith',
-                'pin': '1111',
-                'is_admin': False
-            },
-            {
-                'name': 'Sarah Johnson',
-                'pin': '2222',
-                'is_admin': False
-            },
-            {
-                'name': 'Mike Wilson',
-                'pin': '3333',
-                'is_admin': False
-            },
-            {
-                'name': 'Emma Davis',
-                'pin': '4444',
-                'is_admin': False
-            }
-        ]
+        # Convert dates to datetime objects
+        start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+        end_datetime = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
         
-        for worker_data in workers:
-            worker = Employee(
-                name=worker_data['name'],
-                pin=generate_password_hash(worker_data['pin']),
-                is_admin=worker_data['is_admin']
-            )
-            db.session.add(worker)
+        # Delete shifts within the date range
+        deleted = Shift.query.filter(
+            Shift.check_in_time >= start_datetime,
+            Shift.check_in_time < end_datetime
+        ).delete()
         
         db.session.commit()
-        print("Created admin user and workers")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully deleted {deleted} shifts'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+if __name__ == '__main__':
+    with app.app_context():
+        # Create tables if they don't exist
+        db.create_all()
+        
+        # Check if admin user exists, if not create one
+        admin = Employee.query.filter_by(is_admin=True).first()
+        if not admin:
+            admin = Employee(
+                name='Admin',
+                pin=generate_password_hash('1234'),
+                is_admin=True
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Created admin user")
     
     app.run(debug=True, port=5000) 
