@@ -183,7 +183,6 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <i class="fas fa-clock me-2"></i>
                 Pizzeria Time Tracking
             </a>
             <div class="d-flex">
@@ -196,108 +195,88 @@
     </nav>
 
     <div class="container">
-        <div class="employee-info" data-employee-id="{{ employee.id }}">
-            <h1 class="employee-name">{{ employee.name }}</h1>
-            <div class="employee-status">
-                {% if employee.checked_in %}
-                    <span class="status-badge checked-in">
-                        <i class="fas fa-check-circle me-1"></i>
-                        Checked In
-                    </span>
-                {% else %}
-                    <span class="status-badge checked-out">
-                        <i class="fas fa-times-circle me-1"></i>
-                        Checked Out
-                    </span>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="shift-buttons">
-            {% if not employee.checked_in %}
-                <button class="btn btn-success check-in-btn">
-                    <i class="fas fa-sign-in-alt"></i>
-                    Check In
-                </button>
-            {% else %}
-                <button class="btn btn-danger check-out-btn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Check Out
-                </button>
-            {% endif %}
-        </div>
+        <h1 class="page-title">Employee Dashboard</h1>
 
         <div class="card">
             <div class="card-body">
-                <h2 class="h4 mb-4">Recent Shifts</h2>
-                <div class="table-responsive">
-                    <table class="shifts-table">
-                        <thead>
-                            <tr>
-                                <th>Shift Type</th>
-                                <th>Check In</th>
-                                <th>Check Out</th>
-                                <th>Duration</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for shift in shifts %}
-                            <tr>
-                                <td>
+                <div class="employee-info">
+                    <h2>{{ employee.name }}</h2>
+                    {% if employee.checked_in %}
+                        <div class="status-badge checked-in">
+                            <i class="fas fa-check-circle me-1"></i>
+                            Checked In
+                        </div>
+                        <div class="shift-info">
+                            <span class="shift-type {{ employee.shift_type }}">
+                                {{ employee.shift_type|title }} Shift
+                            </span>
+                            <span class="ms-3">
+                                Since: {{ employee.check_in_time.strftime('%H:%M:%S') }}
+                            </span>
+                            <span class="ms-3">
+                                Planned Hours: {{ employee.planned_hours }}
+                            </span>
+                        </div>
+                        <button class="btn btn-danger check-out-btn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Check Out
+                        </button>
+                    {% else %}
+                        <div class="status-badge checked-out">
+                            <i class="fas fa-times-circle me-1"></i>
+                            Checked Out
+                        </div>
+                        <div class="check-in-form">
+                            <button class="btn btn-success check-in-btn">
+                                <i class="fas fa-sign-in-alt"></i>
+                                Check In
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h3>Recent Shifts</h3>
+                {% if shifts %}
+                    <div class="shifts-list">
+                        {% for shift in shifts %}
+                            <div class="shift-card">
+                                <div class="shift-date">
+                                    {{ shift.check_in_time.strftime('%Y-%m-%d') }}
+                                </div>
+                                <div class="shift-details">
                                     <span class="shift-type {{ shift.shift_type }}">
                                         {{ shift.shift_type|title }}
                                     </span>
-                                </td>
-                                <td>{{ shift.check_in_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                <td>
+                                    <span class="ms-3">
+                                        {{ shift.check_in_time.strftime('%H:%M') }} - 
+                                        {% if shift.check_out_time %}
+                                            {{ shift.check_out_time.strftime('%H:%M') }}
+                                        {% else %}
+                                            Ongoing
+                                        {% endif %}
+                                    </span>
                                     {% if shift.check_out_time %}
-                                        {{ shift.check_out_time.strftime('%Y-%m-%d %H:%M:%S') }}
-                                    {% else %}
-                                        <span class="text-warning">Not checked out</span>
+                                        <span class="ms-3">
+                                            Duration: {{ ((shift.check_out_time - shift.check_in_time).total_seconds() / 3600)|round(1) }} hours
+                                        </span>
                                     {% endif %}
-                                </td>
-                                <td>
-                                    {% if shift.check_out_time %}
-                                        {{ (shift.check_out_time - shift.check_in_time).total_seconds()|int // 3600 }}h 
-                                        {{ ((shift.check_out_time - shift.check_in_time).total_seconds()|int % 3600) // 60 }}m
-                                    {% else %}
-                                        <span class="text-warning">Ongoing</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No recent shifts</p>
+                {% endif %}
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function formatTime(date) {
-            return new Date(date).toLocaleTimeString();
-        }
-
-        function updateStatus() {
-            fetch('/status')
-                .then(response => response.json())
-                .then(data => {
-                    const employeeId = document.querySelector('.employee-info').getAttribute('data-employee-id');
-                    const employee = data.find(emp => emp.id === parseInt(employeeId));
-                    if (employee) {
-                        const statusBadge = document.querySelector('.status-badge');
-                        if (employee.checked_in) {
-                            statusBadge.className = 'status-badge checked-in';
-                            statusBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i> Checked In';
-                        } else {
-                            statusBadge.className = 'status-badge checked-out';
-                            statusBadge.innerHTML = '<i class="fas fa-times-circle me-1"></i> Checked Out';
-                        }
-                    }
-                });
-        }
-
         document.querySelector('.check-in-btn')?.addEventListener('click', function() {
             fetch('/check-in', {
                 method: 'POST',
@@ -311,27 +290,35 @@
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert(data.message);
+                    alert(data.message || 'Error checking in');
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error checking in');
             });
         });
 
         document.querySelector('.check-out-btn')?.addEventListener('click', function() {
             fetch('/check-out', {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert(data.message);
+                    alert(data.message || 'Error checking out');
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error checking out');
             });
         });
-
-        // Update status every 30 seconds
-        setInterval(updateStatus, 30000);
     </script>
 </body>
 </html> 

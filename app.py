@@ -72,13 +72,6 @@ def validate_check_in(employee):
     if ongoing_shift:
         return False, "You have an ongoing shift"
     
-    # Check if within valid shift hours
-    current_time = datetime.now().time()
-    shift_hours = get_shift_hours()
-    
-    if not (shift_hours['start'] <= current_time <= shift_hours['end']):
-        return False, f"Outside of shift hours ({shift_hours['start'].strftime('%I:%M %p')} - {shift_hours['end'].strftime('%I:%M %p')})"
-    
     return True, "Can check in"
 
 # Authentication decorator
@@ -173,7 +166,14 @@ def employee_dashboard():
 @app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
-    checked_in_employees = Employee.query.filter_by(checked_in=True).all()
+    # Get all checked-in employees with their latest check-in time
+    checked_in_employees = db.session.query(Employee).filter(Employee.checked_in == True).all()
+    
+    # Debug print
+    print("\nChecked-in employees:")
+    for emp in checked_in_employees:
+        print(f"Employee: {emp.name}, Check-in time: {emp.check_in_time}, Shift: {emp.shift_type}")
+    
     return render_template('admin_dashboard.html', checked_in_employees=checked_in_employees)
 
 @app.route('/admin/employees')
@@ -274,7 +274,14 @@ def export_shifts():
     # Base query
     query = Shift.query
     
-    # Apply date filters if provided
+    # If no dates specified, default to current month
+    if not start_date and not end_date:
+        today = datetime.now()
+        start_date = today.replace(day=1).strftime('%Y-%m-%d')
+        end_date = (today.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        end_date = end_date.strftime('%Y-%m-%d')
+    
+    # Apply date filters
     if start_date:
         start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
         query = query.filter(Shift.check_in_time >= start_datetime)
@@ -315,37 +322,58 @@ def export_shifts():
             worksheet.set_column(i, i, max_length)
     
     output.seek(0)
+    
+    # Create filename with date range
+    filename = f'shifts_{start_date}_to_{end_date}.xlsx' if start_date and end_date else f'shifts_{datetime.now().strftime("%Y-%m")}.xlsx'
+    
     return send_file(
         output,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
-        download_name=f'shifts_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        download_name=filename
     )
 
 @app.route('/check-in', methods=['POST'])
 @login_required
 def check_in():
-    employee = Employee.query.get(session['employee_id'])
-    
-    can_check_in, message = validate_check_in(employee)
-    if not can_check_in:
-        return jsonify({'success': False, 'message': message})
-    
-    shift_type = get_shift_type()
-    employee.checked_in = True
-    employee.check_in_time = datetime.utcnow()
-    employee.shift_type = shift_type
-    
-    # Create new shift
-    shift = Shift(
-        employee_id=employee.id,
-        shift_type=shift_type
-    )
-    
-    db.session.add(shift)
-    db.session.commit()
-    
-    return jsonify({'success': True})
+    try:
+        employee = Employee.query.get(session['employee_id'])
+        print(f"Attempting check-in for employee: {employee.name}")
+        
+        can_check_in, message = validate_check_in(employee)
+        print(f"Can check in: {can_check_in}, Message: {message}")
+        
+        if not can_check_in:
+            return jsonify({'success': False, 'message': message})
+        
+        shift_type = get_shift_type()
+        current_time = datetime.utcnow()
+        
+        # Update employee status
+        employee.checked_in = True
+        employee.check_in_time = current_time
+        employee.shift_type = shift_type
+        
+        # Create new shift
+        shift = Shift(
+            employee_id=employee.id,
+            check_in_time=current_time,
+            shift_type=shift_type
+        )
+        
+        db.session.add(shift)
+        db.session.commit()
+        
+        # Verify the update
+        db.session.refresh(employee)
+        print(f"Employee check-in status after update: {employee.checked_in}")
+        print(f"Employee check-in time after update: {employee.check_in_time}")
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error during check-in: {str(e)}")
+        return jsonify({'success': False, 'message': 'Error during check-in'})
 
 @app.route('/check-out', methods=['POST'])
 @login_required
@@ -400,14 +428,17 @@ def admin_check_out(employee_id):
 @app.route('/status')
 @login_required
 def status():
+    # Get all employees
     employees = Employee.query.all()
-    return jsonify([{
+    status_data = [{
         'id': emp.id,
         'name': emp.name,
         'checked_in': emp.checked_in,
         'check_in_time': emp.check_in_time.strftime('%Y-%m-%d %H:%M:%S') if emp.check_in_time else None,
         'shift_type': emp.shift_type
-    } for emp in employees])
+    } for emp in employees]
+    print(f"Status data: {status_data}")
+    return jsonify(status_data)
 
 @app.route('/admin/shifts/weekend-hours')
 @admin_required
@@ -425,27 +456,22 @@ def weekend_hours():
         # Check if shift is on weekend
         if shift.check_in_time.weekday() >= 5:  # Saturday (5) or Sunday (6)
             employee_name = shift.employee.name
-            
             # Calculate shift duration
             if shift.check_out_time:
                 duration = (shift.check_out_time - shift.check_in_time).total_seconds() / 3600
             else:
                 # For ongoing shifts, calculate until now
                 duration = (datetime.utcnow() - shift.check_in_time).total_seconds() / 3600
-            
             # Update total hours
             weekend_hours['total_hours'] += duration
-            
             # Update employee hours
             if employee_name not in weekend_hours['employees']:
                 weekend_hours['employees'][employee_name] = 0
             weekend_hours['employees'][employee_name] += duration
-    
     # Round all hours to 2 decimal places
     weekend_hours['total_hours'] = round(weekend_hours['total_hours'], 2)
     for employee in weekend_hours['employees']:
         weekend_hours['employees'][employee] = round(weekend_hours['employees'][employee], 2)
-    
     return jsonify(weekend_hours)
 
 @app.route('/admin/shifts/weekend-hours/export')
@@ -562,5 +588,51 @@ def export_weekend_hours():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Only create tables if they don't exist
+        # Drop all tables and recreate them
+        db.drop_all()
+        db.create_all()
+        
+        # Create admin user
+        admin = Employee(
+            name='Admin',
+            pin=generate_password_hash('1234'),
+            is_admin=True
+        )
+        db.session.add(admin)
+        
+        # Create workers
+        workers = [
+            {
+                'name': 'John Smith',
+                'pin': '1111',
+                'is_admin': False
+            },
+            {
+                'name': 'Sarah Johnson',
+                'pin': '2222',
+                'is_admin': False
+            },
+            {
+                'name': 'Mike Wilson',
+                'pin': '3333',
+                'is_admin': False
+            },
+            {
+                'name': 'Emma Davis',
+                'pin': '4444',
+                'is_admin': False
+            }
+        ]
+        
+        for worker_data in workers:
+            worker = Employee(
+                name=worker_data['name'],
+                pin=generate_password_hash(worker_data['pin']),
+                is_admin=worker_data['is_admin']
+            )
+            db.session.add(worker)
+        
+        db.session.commit()
+        print("Created admin user and workers")
+    
     app.run(debug=True, port=5000) 

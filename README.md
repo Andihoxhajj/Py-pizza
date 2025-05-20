@@ -1,37 +1,60 @@
-# Pizzeria Employee Time Tracking System
+# Pizzeria Time Tracking System
 
-A simple and efficient web application for managing employee check-ins and checkouts at a pizzeria.
+A web-based time tracking system for managing employee shifts and work hours in a pizzeria.
 
 ## Features
 
-- Easy check-in/checkout system
-- Support for different shift types:
-  - Day Shift (08:00 - 16:59)
-  - Evening Shift (17:00 - 23:59)
-  - Weekend Hours
-- Real-time status updates
-- Clean, responsive interface
-- SQLite database for easy setup and portability
+- Employee check-in/check-out system
+- Shift management (day, evening, weekend shifts)
+- Admin dashboard for monitoring employee status
+- Shift history and reporting
+- Export functionality for shift data
+- Weekend hours tracking
+- Date range filtering for reports
 
 ## Setup
 
-1. Create a virtual environment (recommended):
+1. Create a virtual environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-2. Install dependencies:
+2. Activate the virtual environment:
+- On Windows:
+```bash
+venv\Scripts\activate
+```
+- On macOS/Linux:
+```bash
+source venv/bin/activate
+```
+
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Run the application:
+4. Run the application:
 ```bash
 python app.py
 ```
 
-4. Access the application at `http://localhost:5000`
+5. Access the application at `http://localhost:5000`
+
+## Default Login
+
+- Admin PIN: 1234
+- Employee PINs: 1111, 2222, 3333, 4444
+
+## Technologies Used
+
+- Python
+- Flask
+- SQLAlchemy
+- Bootstrap 5
+- Font Awesome
+- Pandas
+- XlsxWriter
 
 ## Adding Employees
 

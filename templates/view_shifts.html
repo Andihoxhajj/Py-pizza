@@ -286,7 +286,6 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <i class="fas fa-clock me-2"></i>
                 Pizzeria Time Tracking
             </a>
             <div class="admin-actions">
@@ -334,13 +333,13 @@
 
         <div class="action-buttons">
             <button class="btn btn-danger" onclick="showWeekendHours()">
-                <span style="font-size:1.2em;">🍕</span>
+                <i class="fas fa-calendar-week"></i>
                 Weekend Hours
             </button>
-            <a href="{{ url_for('export_shifts') }}" class="btn btn-danger">
+            <button class="btn btn-danger" onclick="exportShifts()">
                 <i class="fas fa-file-excel"></i>
                 Export to Excel
-            </a>
+            </button>
         </div>
 
         <!-- Weekend Hours Modal -->
@@ -355,8 +354,9 @@
                         <div class="text-center mb-4">
                             <h4>Total Weekend Hours</h4>
                             <h2 class="text-danger" id="totalWeekendHours">0</h2>
-                            <a href="{{ url_for('export_weekend_hours') }}" class="pizza-btn mt-3" title="Export Weekend Hours">
-                                <span style="font-size:2em;">🍕</span>
+                            <a href="{{ url_for('export_weekend_hours') }}" class="btn btn-danger mt-3">
+                                <i class="fas fa-file-excel"></i>
+                                Export to Excel
                             </a>
                         </div>
                         <h5 class="mb-3">Hours by Employee</h5>
@@ -445,6 +445,23 @@
             
             this.submit();
         });
+
+        function exportShifts() {
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            
+            let url = "{{ url_for('export_shifts') }}";
+            const params = new URLSearchParams();
+            
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+            
+            window.location.href = url;
+        }
 
         function showWeekendHours() {
             fetch('/admin/shifts/weekend-hours')
