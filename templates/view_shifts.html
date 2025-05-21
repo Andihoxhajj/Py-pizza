@@ -308,12 +308,12 @@
             <form id="dateFilterForm" method="GET" action="{{ url_for('view_shifts') }}">
                 <div class="date-range">
                     <div class="form-group">
-                        <label for="start_date">Start Date (Monday)</label>
+                        <label for="start_date">Start Date</label>
                         <input type="text" class="form-control datepicker" id="start_date" name="start_date" 
                                value="{{ start_date }}" placeholder="Select start date">
                     </div>
                     <div class="form-group">
-                        <label for="end_date">End Date (Sunday)</label>
+                        <label for="end_date">End Date</label>
                         <input type="text" class="form-control datepicker" id="end_date" name="end_date" 
                                value="{{ end_date }}" placeholder="Select end date">
                     </div>
@@ -480,19 +480,6 @@
             
             if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
                 alert('End date must be after start date');
-                return;
-            }
-            
-            // Ensure dates are Monday to Sunday
-            const startDay = new Date(startDate).getDay();
-            const endDay = new Date(endDate).getDay();
-            
-            if (startDay !== 1) { // 1 is Monday
-                alert('Start date must be a Monday');
-                return;
-            }
-            if (endDay !== 0) { // 0 is Sunday
-                alert('End date must be a Sunday');
                 return;
             }
             
